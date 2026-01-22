@@ -1,12 +1,10 @@
 from collections import defaultdict
 import json
-from pprint import pprint
-from typing import Any, Dict, TypedDict
+from typing import Dict, TypedDict
 import pyuepak as pk
 import pylocres as pl
 from pathlib import Path
 import os
-import sys
 
 
 class ArgsDict(TypedDict):
@@ -60,24 +58,21 @@ def get_keys_to_alter(file_path: str | Path) -> Dict[str, Dict[str, str]]:
 def alter_locres(args: ArgsDict):
     locres = pl.LocresFile()
     locres.read(Path(ROOT, TMP_LOCRES_FILE))
-    # namespace_keys_to_alter = get_keys_to_alter(
-    #     args["alter_keys_json_file"]
-    # )
+    namespace_keys_to_alter = get_keys_to_alter(args["alter_keys_json_file"])
 
-    # for namespace in locres:
-    #     keys_to_alter = namespace_keys_to_alter.get(namespace.name, {})
+    for namespace in locres:
+        keys_to_alter = namespace_keys_to_alter.get(namespace.name, {})
 
-    #     for key, value in namespace.entrys.items():
-    #         if key not in keys_to_alter:
-    #             continue
-    #         new_value = keys_to_alter.get(key, value.translation)
-    #         value.translation = new_value
-    #         value.hash = pl.entry_hash(value.translation)
+        for key, value in namespace.entrys.items():
+            if key not in keys_to_alter:
+                continue
+            new_value = keys_to_alter.get(key, value.translation)
+            value.translation = new_value
+            value.hash = pl.entry_hash(value.translation)
 
-    #         namespace.entrys[key] = value
-    # locres.write(Path(ROOT, TMP_LOCRES_FILE))
-    locres.write("test.locres")
-    exit()
+            namespace.entrys[key] = value
+    # module doesnt want to save me fookin file
+    locres.write(Path(ROOT, TMP_LOCRES_FILE))
 
 
 @log_entry_exit
@@ -120,6 +115,5 @@ if __name__ == "__main__":
         "output_mod_name": "test.pak",
         "alter_keys_json_file": "to_alter.json",
     }
-    alter_locres(args)
 
-    # main(args)
+    main(args)
