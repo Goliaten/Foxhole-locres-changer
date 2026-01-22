@@ -1,0 +1,9 @@
+{
+    "War::StockpileCommendTextFormat": "<lf><lf>Do you want to headpat {0}?",
+    "War::CanNotCommendWhileTravelling": "Can not headpat while travelling.",
+    "War::Commend": "Headpat",
+    "War::CommendLimitReached": "Daily headpat limit reached for this player",
+    "War::PlayerCommended": "Player Headpatted",
+    "War::TotalCommendLimitReached": "Total daily headpat limit reached",
+    "War::PlayerHasCommendedYou": "{0} has headpatted you"
+}
