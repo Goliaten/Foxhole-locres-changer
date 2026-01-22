@@ -9,3 +9,8 @@ dependencies = [
     "pylocres>=0.1.8",
     "pyuepak>=0.2.5",
 ]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.14.14",
+]
