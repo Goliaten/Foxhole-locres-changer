@@ -1,6 +1,11 @@
 # Foxhole Locres Changer
 
 ## Usage
+This project uses a submodule. To properly clone it use:
+```
+git clone --recurse-submodules https://github.com/Goliaten/Foxhole-locres-changer.git 
+```
+
 ### Changing locres keys
 Change keys that you'd want altered in `to_alter.json`. Keys have to include namespace before them.
 If value of keys won't have `\n` at the end, the script will add it. It's like that so later on the locres is properly saved.
