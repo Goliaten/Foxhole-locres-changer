@@ -9,7 +9,12 @@ wheels/
 # Virtual environments
 .venv
 
-*.locres
 .python-version
 *.lock
 *.log
+
+*.locres
+*.locmeta
+*.locres.*
+*.locmeta.*
+*.tmp
