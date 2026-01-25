@@ -2,7 +2,6 @@ from collections import defaultdict
 import json
 from typing import Dict, TypedDict
 import pyuepak as pk
-import pylocres as pl
 from pathlib import Path
 import os
 
@@ -24,13 +23,19 @@ def log_entry_exit(func):
     return wrapper
 
 
+def extract_package(
+    pakfile: pk.PakFile, package_path: str | Path, output_name: str | Path
+) -> None:
+    locres_file = pakfile.read_file(package_path)
+    with open(output_name, "wb") as file:
+        file.write(locres_file)
+
+
 @log_entry_exit
-def extract_locres(args: ArgsDict) -> None:
+def extract(args: ArgsDict) -> None:
     pak = pk.PakFile()
     pak.read(args["pak_path"])
-    locres_file = pak.read_file(args["locres_path"])
-    with open(Path(ROOT, TMP_LOCRES_FILE), "wb") as file:
-        file.write(locres_file)
+    extract_package(pak, args["locres_path"], TMP_LOCRES_FILE)
 
 
 def parse_data(data: str) -> str:
@@ -56,23 +61,23 @@ def get_keys_to_alter(file_path: str | Path) -> Dict[str, Dict[str, str]]:
 
 @log_entry_exit
 def alter_locres(args: ArgsDict):
-    locres = pl.LocresFile()
-    locres.read(Path(ROOT, TMP_LOCRES_FILE))
-    namespace_keys_to_alter = get_keys_to_alter(args["alter_keys_json_file"])
+    # locres = pl.LocresFile()
+    # locres.read(Path(ROOT, TMP_LOCRES_FILE))
+    # namespace_keys_to_alter = get_keys_to_alter(args["alter_keys_json_file"])
 
-    for namespace in locres:
-        keys_to_alter = namespace_keys_to_alter.get(namespace.name, {})
+    # for namespace in locres:
+    #     keys_to_alter = namespace_keys_to_alter.get(namespace.name, {})
 
-        for key, value in namespace.entrys.items():
-            if key not in keys_to_alter:
-                continue
-            new_value = keys_to_alter.get(key, value.translation)
-            value.translation = new_value
-            value.hash = pl.entry_hash(value.translation)
+    #     for key, value in namespace.entrys.items():
+    #         if key not in keys_to_alter:
+    #             continue
+    #         new_value = keys_to_alter.get(key, value.translation)
+    #         value.translation = new_value
+    #         value.hash = pl.entry_hash(value.translation)
 
-            namespace.entrys[key] = value
-    # module doesnt want to save me fookin file
-    locres.write(Path(ROOT, TMP_LOCRES_FILE))
+    #         namespace.entrys[key] = value
+    # # module doesnt want to save me fookin file
+    # locres.write(Path(ROOT, TMP_LOCRES_FILE))
 
 
 @log_entry_exit
@@ -88,7 +93,7 @@ def assemble_mod(args: ArgsDict) -> None:
 def main(args: ArgsDict) -> None:
     # open game files
     # extract .locres
-    extract_locres(args)
+    extract(args)
 
     # edit the .locres
     alter_locres(args)
@@ -98,6 +103,7 @@ def main(args: ArgsDict) -> None:
 
 
 TMP_LOCRES_FILE = "tmp.locres"
+TMP_LOCMETA_FILE = "tmp.locmeta"
 ROOT = os.path.split(__file__)[0]
 
 if __name__ == "__main__":
