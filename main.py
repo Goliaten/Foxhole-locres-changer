@@ -1,7 +1,6 @@
-from collections import defaultdict
 import json
-import pprint
-from typing import Dict, TypedDict
+from shutil import copy, rmtree
+from typing import Dict, List, TypedDict
 import pyuepak as pk
 from pathlib import Path
 import os
@@ -26,6 +25,15 @@ def log_entry_exit(func):
     return wrapper
 
 
+def run_subprocess(command: List[str]) -> None:
+    p1 = subprocess.Popen(command)
+    p1.wait()
+    p1.kill()
+    stdout, stderr = p1.communicate()
+    print("stdout:", stdout.decode() if stdout else "")
+    print("stderr:", stderr.decode() if stderr else "")
+
+
 def extract_package(
     pakfile: pk.PakFile, package_path: str | Path, output_name: str | Path
 ) -> None:
@@ -47,10 +55,7 @@ def disassemble_locres(args: ArgsDict):
         "export",
         TMP_LOCRES_PATH,
     ]
-    print(" ".join(command))
-    p1 = subprocess.Popen(command)
-    p1.wait()
-    p1.kill()
+    run_subprocess(command)
 
 
 def parse_data(data: str) -> str:
@@ -88,21 +93,48 @@ def assemble_locres(args: ArgsDict, data: Dict[str, str]) -> None:
         "import",
         TMP_LOCRES_EXPORTED_PATH,
     ]
-    print(" ".join(command))
-    p1 = subprocess.Popen(command)
-    p1.wait()
-    p1.kill()
+    run_subprocess(command)
 
 
 @log_entry_exit
 def assemble_mod(args: ArgsDict) -> None:
-    n_pak = pk.PakFile()
+    locres_target_location = Path(
+        PAK_STRUCTURE_ROOT, os.path.split(args["locres_path"])[0]
+    )
+    locres_target_location.mkdir(exist_ok=True, parents=True)
+    copy(
+        TMP_LOCRES_IMPORTED_PATH,
+        os.path.join(locres_target_location, os.path.split(args["locres_path"])[1]),
+    )
 
-    with open(TMP_LOCRES_IMPORTED_PATH, "rb") as file:
-        locres = file.read()
+    files = [
+        str(x.relative_to(PAK_STRUCTURE_ROOT))
+        for x in Path(PAK_STRUCTURE_ROOT).rglob("*.*")
+    ]
 
-    n_pak.add_file(args["locres_path"], bytes(locres))
-    n_pak.write(OUTPUT_NAME)
+    wd = os.getcwd()
+    os.chdir(PAK_STRUCTURE_ROOT)
+    command = [
+        "python",
+        os.path.join("..", "u4pak", "u4pak.py"),
+        "pack",
+        OUTPUT_PATH,
+    ] + files
+    run_subprocess(command)
+    os.chdir(wd)
+
+
+def cleanup():
+    files_to_remove = [
+        TMP_LOCRES_PATH,
+        TMP_LOCRES_EXPORTED_PATH,
+        TMP_LOCRES_IMPORTED_PATH,
+    ]
+    dirs_to_remove = [PAK_STRUCTURE_ROOT]
+    for file in files_to_remove:
+        os.remove(file)
+    for dirr in dirs_to_remove:
+        rmtree(dirr)
 
 
 def main(args: ArgsDict) -> None:
@@ -118,6 +150,8 @@ def main(args: ArgsDict) -> None:
     # assemble the mod
     assemble_mod(args)
 
+    cleanup()
+
 
 TMP_LOCRES_FILE = "tmp.locres"
 TMP_LOCRES_EXPORTED = TMP_LOCRES_FILE + ".txt"
@@ -127,7 +161,8 @@ TMP_LOCRES_PATH = os.path.join(ROOT, TMP_LOCRES_FILE)
 # though does the exporter import in local dir, or the dir of itself
 TMP_LOCRES_EXPORTED_PATH = os.path.join(ROOT, TMP_LOCRES_EXPORTED)
 TMP_LOCRES_IMPORTED_PATH = os.path.join(ROOT, TMP_LOCRES_IMPORTED)
-OUTPUT_NAME = "output_pak.pak"
+OUTPUT_PATH = os.path.join(ROOT, "output_pak.pak")
+PAK_STRUCTURE_ROOT = "archive"
 
 if __name__ == "__main__":
     # r"D:\modding\tools\Template\War-WindowsNoEditor_HeadpatsEN61.23.0.pak"
