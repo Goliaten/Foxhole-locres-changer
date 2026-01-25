@@ -1,9 +1,11 @@
 from collections import defaultdict
 import json
+import pprint
 from typing import Dict, TypedDict
 import pyuepak as pk
 from pathlib import Path
 import os
+import subprocess
 
 
 class ArgsDict(TypedDict):
@@ -11,6 +13,7 @@ class ArgsDict(TypedDict):
     locres_path: str | Path
     output_mod_name: str | Path
     alter_keys_json_file: str | Path
+    UE4localizationsTool_path: str | Path
 
 
 def log_entry_exit(func):
@@ -32,10 +35,22 @@ def extract_package(
 
 
 @log_entry_exit
-def extract(args: ArgsDict) -> None:
+def extract_locres(args: ArgsDict) -> None:
     pak = pk.PakFile()
     pak.read(args["pak_path"])
-    extract_package(pak, args["locres_path"], TMP_LOCRES_FILE)
+    extract_package(pak, args["locres_path"], TMP_LOCRES_PATH)
+
+
+def disassemble_locres(args: ArgsDict):
+    command = [
+        args["UE4localizationsTool_path"],
+        "export",
+        TMP_LOCRES_PATH,
+    ]
+    print(" ".join(command))
+    p1 = subprocess.Popen(command)
+    p1.wait()
+    p1.kill()
 
 
 def parse_data(data: str) -> str:
@@ -45,66 +60,74 @@ def parse_data(data: str) -> str:
     return data
 
 
-def get_keys_to_alter(file_path: str | Path) -> Dict[str, Dict[str, str]]:
+def get_keys_to_alter(file_path: str | Path) -> Dict[str, str]:
     with open(file_path, "r") as file:
         data = json.load(file)
-    out = defaultdict(dict)
-    for dataline in data:
-        namespace, key = dataline.split("::")
-        value = data[dataline]
+    return data
 
-        value = parse_data(value)
 
-        out[namespace][key] = value
+def open_exported_locres(args: ArgsDict) -> Dict[str, str]:
+    out: Dict[str, str] = {}
+    with open(TMP_LOCRES_EXPORTED_PATH, "r") as file:
+        while line := file.readline():
+            line_s = line.split("=", 1)
+            out[line_s[0]] = line_s[1]
     return out
 
 
 @log_entry_exit
-def alter_locres(args: ArgsDict):
-    # locres = pl.LocresFile()
-    # locres.read(Path(ROOT, TMP_LOCRES_FILE))
-    # namespace_keys_to_alter = get_keys_to_alter(args["alter_keys_json_file"])
+def alter_locres(args: ArgsDict) -> Dict[str, str]:
+    data = open_exported_locres(args)
+    to_replace = get_keys_to_alter(args["alter_keys_json_file"])
+    return data | to_replace
 
-    # for namespace in locres:
-    #     keys_to_alter = namespace_keys_to_alter.get(namespace.name, {})
 
-    #     for key, value in namespace.entrys.items():
-    #         if key not in keys_to_alter:
-    #             continue
-    #         new_value = keys_to_alter.get(key, value.translation)
-    #         value.translation = new_value
-    #         value.hash = pl.entry_hash(value.translation)
-
-    #         namespace.entrys[key] = value
-    # # module doesnt want to save me fookin file
-    # locres.write(Path(ROOT, TMP_LOCRES_FILE))
+def assemble_locres(args: ArgsDict, data: Dict[str, str]) -> None:
+    command = [
+        args["UE4localizationsTool_path"],
+        "import",
+        TMP_LOCRES_EXPORTED_PATH,
+    ]
+    print(" ".join(command))
+    p1 = subprocess.Popen(command)
+    p1.wait()
+    p1.kill()
 
 
 @log_entry_exit
 def assemble_mod(args: ArgsDict) -> None:
     n_pak = pk.PakFile()
 
-    with open(Path(ROOT, TMP_LOCRES_FILE), "rb") as file:
+    with open(TMP_LOCRES_IMPORTED_PATH, "rb") as file:
         locres = file.read()
 
     n_pak.add_file(args["locres_path"], bytes(locres))
+    n_pak.write(OUTPUT_NAME)
 
 
 def main(args: ArgsDict) -> None:
     # open game files
     # extract .locres
-    extract(args)
+    extract_locres(args)
+    disassemble_locres(args)
 
     # edit the .locres
-    alter_locres(args)
+    data = alter_locres(args)
+    assemble_locres(args, data)
 
     # assemble the mod
     assemble_mod(args)
 
 
 TMP_LOCRES_FILE = "tmp.locres"
-TMP_LOCMETA_FILE = "tmp.locmeta"
+TMP_LOCRES_EXPORTED = TMP_LOCRES_FILE + ".txt"
+TMP_LOCRES_IMPORTED = TMP_LOCRES_FILE.replace(".", "_NEW.", 1)
 ROOT = os.path.split(__file__)[0]
+TMP_LOCRES_PATH = os.path.join(ROOT, TMP_LOCRES_FILE)
+# though does the exporter import in local dir, or the dir of itself
+TMP_LOCRES_EXPORTED_PATH = os.path.join(ROOT, TMP_LOCRES_EXPORTED)
+TMP_LOCRES_IMPORTED_PATH = os.path.join(ROOT, TMP_LOCRES_IMPORTED)
+OUTPUT_NAME = "output_pak.pak"
 
 if __name__ == "__main__":
     # r"D:\modding\tools\Template\War-WindowsNoEditor_HeadpatsEN61.23.0.pak"
@@ -120,6 +143,7 @@ if __name__ == "__main__":
         ),
         "output_mod_name": "test.pak",
         "alter_keys_json_file": "to_alter.json",
+        "UE4localizationsTool_path": r"UE4localizationsTool.exe",
     }
 
     main(args)
