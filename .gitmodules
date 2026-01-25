@@ -1,0 +1,3 @@
+[submodule "u4pak"]
+	path = u4pak
+	url = https://github.com/panzi/u4pak
