@@ -69,16 +69,14 @@ def disassemble_locres(args: ArgsDict):
     run_subprocess(command)
 
 
-def parse_data(data: str) -> str:
-    """Parsing rules for new values"""
-    data = data.replace("<lf>", "\n")
-
-    return data
-
-
 def get_keys_to_alter(file_path: str | Path) -> Dict[str, str]:
     with open(file_path, "r") as file:
         data = json.load(file)
+
+    data = {
+        key: (value if value[-2:] == "\n" else value + "\n")
+        for key, value in data.items()
+    }
     return data
 
 
@@ -92,13 +90,16 @@ def open_exported_locres(args: ArgsDict) -> Dict[str, str]:
 
 
 @log_entry_exit
-def alter_locres(args: ArgsDict) -> Dict[str, str]:
+def alter_locres(args: ArgsDict):
     data = open_exported_locres(args)
     to_replace = get_keys_to_alter(args["alter_keys_json_file"])
-    return data | to_replace
+    n_data = data | to_replace
+    to_save = [f"{key}={value}" for key, value in n_data.items()]
+    with open(TMP_LOCRES_EXPORTED_PATH, "w") as file:
+        file.writelines(to_save)
 
 
-def assemble_locres(args: ArgsDict, data: Dict[str, str]) -> None:
+def assemble_locres(args: ArgsDict) -> None:
     command = [
         args["UE4localizationsTool_path"],
         "import",
@@ -167,8 +168,8 @@ def main(args: ArgsDict) -> None:
     disassemble_locres(args)
 
     # edit the .locres
-    data = alter_locres(args)
-    assemble_locres(args, data)
+    alter_locres(args)
+    assemble_locres(args)
 
     # assemble the mod
     assemble_mod(args, version)
