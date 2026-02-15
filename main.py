@@ -38,7 +38,6 @@ def extract_package(
 
 @log_entry_exit
 def get_game_version(pak: pk.PakFile, args: argparse.Namespace) -> str:
-
     if args.dont_add_version:
         print("Version disabled by --dont_add_version")
         return ""
@@ -219,6 +218,12 @@ def setup() -> argparse.ArgumentParser:
         type=str,
         help="Path to UE4localizationsTool.exe",
         default=cfg.UE4_LOCALIZATIONS_TOOL_PATH,
+    )
+    parser.add_argument(
+        "--default_game_path",
+        type=str,
+        help="Path within the .pak file, pointing at .ini file containing ProjectVersion key with game version.",
+        default=cfg.DEFAULT_GAME_PATH,
     )
     parser.add_argument(
         "--dont_add_version",
