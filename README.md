@@ -28,6 +28,5 @@ python main.py
 - [u4pak](https://github.com/panzi/u4pak) (included as submodule)
 
 # TODO
-- [ ] move `args` from main.py into separate `params.json` or into argparse
-- [ ] move static variables in from main.py into separate `config.py`
+- [ ] check behaviour when executed from non project root directory
 

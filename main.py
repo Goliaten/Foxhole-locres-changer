@@ -1,18 +1,12 @@
+import argparse
 import json
 from shutil import copy, rmtree
 from typing import Dict, List, TypedDict
+import config as cfg
 import pyuepak as pk
 from pathlib import Path
 import os
 import subprocess
-
-
-class ArgsDict(TypedDict):
-    pak_path: str | Path
-    locres_path: str | Path
-    output_mod_name: str | Path
-    alter_keys_json_file: str | Path
-    UE4localizationsTool_path: str | Path
 
 
 def log_entry_exit(func):
@@ -42,8 +36,11 @@ def extract_package(
         file.write(locres_file)
 
 
-def get_game_version(pak: pk.PakFile, args: ArgsDict) -> str:
-    data = pak.read_file(DEFAULT_GAME_PATH)
+def get_game_version(pak: pk.PakFile, args: argparse.Namespace) -> str:
+
+    if args.dont_add_version:
+        return ""
+    data = pak.read_file(cfg.DEFAULT_GAME_PATH)
     data = data.decode().split("\r\n")
     for x in data:
         if "ProjectVersion" in x:
@@ -52,19 +49,18 @@ def get_game_version(pak: pk.PakFile, args: ArgsDict) -> str:
 
 
 @log_entry_exit
-def extract_data(args: ArgsDict) -> str:
+def extract_data(args: argparse.Namespace) -> str:
     pak = pk.PakFile()
-    pak.read(args["pak_path"])
-    extract_package(pak, args["locres_path"], TMP_LOCRES_PATH)
+    pak.read(args.pak_path)
+    extract_package(pak, args.locres_path, cfg.TMP_LOCRES_PATH)
+    return pak
 
-    return get_game_version(pak, args)
 
-
-def disassemble_locres(args: ArgsDict):
+def disassemble_locres(args: argparse.Namespace):
     command = [
-        args["UE4localizationsTool_path"],
+        args.UE4localizationsTool_path,
         "export",
-        TMP_LOCRES_PATH,
+        cfg.TMP_LOCRES_PATH,
     ]
     run_subprocess(command)
 
@@ -80,9 +76,9 @@ def get_keys_to_alter(file_path: str | Path) -> Dict[str, str]:
     return data
 
 
-def open_exported_locres(args: ArgsDict) -> Dict[str, str]:
+def open_exported_locres(args: argparse.Namespace) -> Dict[str, str]:
     out: Dict[str, str] = {}
-    with open(TMP_LOCRES_EXPORTED_PATH, "r") as file:
+    with open(cfg.TMP_LOCRES_EXPORTED_PATH, "r") as file:
         while line := file.readline():
             line_s = line.split("=", 1)
             out[line_s[0]] = line_s[1]
@@ -90,54 +86,56 @@ def open_exported_locres(args: ArgsDict) -> Dict[str, str]:
 
 
 @log_entry_exit
-def alter_locres(args: ArgsDict):
+def alter_locres(args: argparse.Namespace):
     data = open_exported_locres(args)
-    to_replace = get_keys_to_alter(args["alter_keys_json_file"])
+    to_replace = get_keys_to_alter(args.alter_keys_json_file)
     n_data = data | to_replace
     to_save = [f"{key}={value}" for key, value in n_data.items()]
-    with open(TMP_LOCRES_EXPORTED_PATH, "w") as file:
+    with open(cfg.TMP_LOCRES_EXPORTED_PATH, "w") as file:
         file.writelines(to_save)
 
 
-def assemble_locres(args: ArgsDict) -> None:
+def assemble_locres(args: argparse.Namespace) -> None:
     command = [
-        args["UE4localizationsTool_path"],
+        args.UE4localizationsTool_path,
         "import",
-        TMP_LOCRES_EXPORTED_PATH,
+        cfg.TMP_LOCRES_EXPORTED_PATH,
     ]
     run_subprocess(command)
 
 
-def prepare_mod_structure(args: ArgsDict) -> None:
+def prepare_mod_structure(args: argparse.Namespace) -> None:
     locres_target_location = Path(
-        PAK_STRUCTURE_ROOT, os.path.split(args["locres_path"])[0]
+        cfg.PAK_STRUCTURE_ROOT, os.path.split(args.locres_path)[0]
     )
     locres_target_location.mkdir(exist_ok=True, parents=True)
     copy(
-        TMP_LOCRES_IMPORTED_PATH,
-        os.path.join(locres_target_location, os.path.split(args["locres_path"])[1]),
+        cfg.TMP_LOCRES_IMPORTED_PATH,
+        os.path.join(locres_target_location, os.path.split(args.locres_path)[1]),
     )
 
 
 @log_entry_exit
-def assemble_mod(args: ArgsDict, game_version: str) -> None:
+def assemble_mod(args: argparse.Namespace, game_version: str) -> None:
     prepare_mod_structure(args)
 
     files = [
-        str(x.relative_to(PAK_STRUCTURE_ROOT))
-        for x in Path(PAK_STRUCTURE_ROOT).rglob("*.*")
+        str(x.relative_to(cfg.PAK_STRUCTURE_ROOT))
+        for x in Path(cfg.PAK_STRUCTURE_ROOT).rglob("*.*")
     ]
 
     out_path = os.path.join(
-        ROOT,
-        str(args["output_mod_name"]).replace(
+        cfg.ROOT,
+        str(args.output_mod_name).replace(
             ".pak", f"{'_v' + game_version if game_version else ''}.pak", 1
         ),
     )
 
     # package mod from inside mod directory, to preserve .pak structure
     wd = os.getcwd()
-    os.chdir(PAK_STRUCTURE_ROOT)
+    os.chdir(cfg.PAK_STRUCTURE_ROOT)
+    print(f"Saving mod to {out_path}")
+
     command = [
         "python",
         os.path.join("..", "u4pak", "u4pak.py"),
@@ -150,21 +148,22 @@ def assemble_mod(args: ArgsDict, game_version: str) -> None:
 
 def cleanup():
     files_to_remove = [
-        TMP_LOCRES_PATH,
-        TMP_LOCRES_EXPORTED_PATH,
-        TMP_LOCRES_IMPORTED_PATH,
+        cfg.TMP_LOCRES_PATH,
+        cfg.TMP_LOCRES_EXPORTED_PATH,
+        cfg.TMP_LOCRES_IMPORTED_PATH,
     ]
-    dirs_to_remove = [PAK_STRUCTURE_ROOT]
+    dirs_to_remove = [cfg.PAK_STRUCTURE_ROOT]
     for file in files_to_remove:
         os.remove(file)
     for dirr in dirs_to_remove:
         rmtree(dirr)
 
 
-def main(args: ArgsDict) -> None:
+def main(args: argparse.Namespace) -> None:
     # open game files
     # extract .locres
-    version = extract_data(args)
+    pak = extract_data(args)
+    version = get_game_version(pak, args)
     disassemble_locres(args)
 
     # edit the .locres
@@ -177,28 +176,54 @@ def main(args: ArgsDict) -> None:
     cleanup()
 
 
-TMP_LOCRES_FILE = "tmp.locres"
-TMP_LOCRES_EXPORTED = TMP_LOCRES_FILE + ".txt"
-TMP_LOCRES_IMPORTED = TMP_LOCRES_FILE.replace(".", "_NEW.", 1)
-ROOT = os.path.split(__file__)[0]
-TMP_LOCRES_PATH = os.path.join(ROOT, TMP_LOCRES_FILE)
-# though does the exporter import in local dir, or the dir of itself
-TMP_LOCRES_EXPORTED_PATH = os.path.join(ROOT, TMP_LOCRES_EXPORTED)
-TMP_LOCRES_IMPORTED_PATH = os.path.join(ROOT, TMP_LOCRES_IMPORTED)
-PAK_STRUCTURE_ROOT = "archive"
-DEFAULT_GAME_PATH = "War/Config/DefaultGame.ini"
+def setup() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="Locres changer",
+        description="Script used to alter .locres files in Unreal Engine game. "
+        "Designed for Foxhole, a UE 4.24 game.",
+    )
+    parser.add_argument(
+        "--pak_path",
+        "-p",
+        type=str,
+        help="Path to .pak file of the game",
+        default=cfg.PAK_PATH,
+    )
+    parser.add_argument(
+        "--locres_path",
+        "-l",
+        type=str,
+        help="Path within the .pak file, pointing to .locres file",
+        default=cfg.LOCRES_PATH,
+    )
+    parser.add_argument(
+        "--output_mod_name",
+        "-o",
+        type=str,
+        help="Filename of output file.",
+        default=cfg.OUTPUT_MOD_NAME,
+    )
+    parser.add_argument(
+        "--alter_keys_json_file",
+        "-a",
+        type=str,
+        help="Path to .json file containing keys to change in .locres.",
+        default=cfg.ALTER_KEYS_JSON_FILE,
+    )
+    parser.add_argument(
+        "--UE4localizationsTool_path",
+        type=str,
+        help="Path to UE4localizationsTool.exe",
+        default=cfg.UE4_LOCALIZATIONS_TOOL_PATH,
+    )
+    parser.add_argument(
+        "--dont_add_version",
+        help="Don't add game version to the output filename.",
+        action="store_true",
+    )
+
+    return parser
+
 
 if __name__ == "__main__":
-    args: ArgsDict = {
-        "pak_path": Path(
-            r"D:\SteamLibrary\steamapps\common\Foxhole\War\Content\Paks\War-WindowsNoEditor.pak"
-        ),
-        "locres_path": Path(
-            "War/Content/Localization/Foxhole-CodeStrings/en/Foxhole-CodeStrings.locres"
-        ),
-        "output_mod_name": "War-WindowsNoEditor_Headpats.pak",
-        "alter_keys_json_file": "to_alter.json",
-        "UE4localizationsTool_path": r"UE4localizationsTool.exe",
-    }
-
-    main(args)
+    main(setup().parse_args())
