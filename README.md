@@ -3,7 +3,7 @@
 # Usage
 This project uses a submodule. To properly clone it use:
 ```
-git clone --recurse-submodules https://github.com/Goliaten/Foxhole-locres-changer.git 
+git clone --recurse-submodules https://github.com/Goliaten/Foxhole-locres-changer.git
 ```
 
 ## Changing locres keys
@@ -66,6 +66,14 @@ To set, pass `--dont_add_version` to the command line. Example: `python main.py 
 Install required packages via `pip` or `uv`, and then run the script:
 ```
 python main.py
+    [-h]
+    [--pak_path PAK_PATH]
+    [--locres_path LOCRES_PATH]
+    [--output_mod_name OUTPUT_MOD_NAME]
+    [--alter_keys_json_file ALTER_KEYS_JSON_FILE]
+    [--UE4localizationsTool_path UE4LOCALIZATIONSTOOL_PATH]
+    [--default_game_path DEFAULT_GAME_PATH]
+    [--dont_add_version]
 ```
 
 # Tools used in this script
