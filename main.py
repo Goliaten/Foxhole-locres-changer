@@ -1,7 +1,7 @@
 import argparse
 import json
 from shutil import copy, rmtree
-from typing import Dict, List, TypedDict
+from typing import Dict, List
 import config as cfg
 import pyuepak as pk
 from pathlib import Path
