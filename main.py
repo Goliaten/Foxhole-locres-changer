@@ -181,7 +181,6 @@ def main(args: argparse.Namespace) -> None:
 
 def setup() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="Locres changer",
         description="Script used to alter .locres files in Unreal Engine game. "
         "Designed for Foxhole, a UE 4.24 game.",
     )
