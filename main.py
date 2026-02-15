@@ -37,6 +37,9 @@ def extract_package(
 
 
 def get_game_version(pak: pk.PakFile, args: argparse.Namespace) -> str:
+
+    if args.dont_add_version:
+        return ""
     data = pak.read_file(cfg.DEFAULT_GAME_PATH)
     data = data.decode().split("\r\n")
     for x in data:
@@ -50,8 +53,7 @@ def extract_data(args: argparse.Namespace) -> str:
     pak = pk.PakFile()
     pak.read(args.pak_path)
     extract_package(pak, args.locres_path, cfg.TMP_LOCRES_PATH)
-
-    return get_game_version(pak, args)
+    return pak
 
 
 def disassemble_locres(args: argparse.Namespace):
@@ -160,7 +162,8 @@ def cleanup():
 def main(args: argparse.Namespace) -> None:
     # open game files
     # extract .locres
-    version = extract_data(args)
+    pak = extract_data(args)
+    version = get_game_version(pak, args)
     disassemble_locres(args)
 
     # edit the .locres
@@ -212,6 +215,11 @@ def setup() -> argparse.ArgumentParser:
         type=str,
         help="Path to UE4localizationsTool.exe",
         default=cfg.UE4_LOCALIZATIONS_TOOL_PATH,
+    )
+    parser.add_argument(
+        "--dont_add_version",
+        help="Don't add game version to the output filename.",
+        action="store_true",
     )
 
     return parser
