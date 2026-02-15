@@ -1,5 +1,6 @@
 import os
 
+# parameter defaults
 PAK_PATH = (
     r"D:\SteamLibrary\steamapps\common\Foxhole\War\Content\Paks\War-WindowsNoEditor.pak"
 )
@@ -8,8 +9,9 @@ LOCRES_PATH = (
 )
 OUTPUT_MOD_NAME = r"War-WindowsNoEditor_Headpats.pak"
 ALTER_KEYS_JSON_FILE = r"to_alter.json"
-# UE4_LOCALIZATIONS_TOOL_PATH = r"UE4localizationsTool.exe"
+UE4_LOCALIZATIONS_TOOL_PATH = r"UE4localizationsTool.exe"
 
+# constants
 TMP_LOCRES_FILE = "tmp.locres"
 TMP_LOCRES_EXPORTED = TMP_LOCRES_FILE + ".txt"
 TMP_LOCRES_IMPORTED = TMP_LOCRES_FILE.replace(".", "_NEW.", 1)
