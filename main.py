@@ -226,4 +226,12 @@ def setup() -> argparse.ArgumentParser:
 
 
 if __name__ == "__main__":
-    main(setup().parse_args())
+    old_cwd = os.getcwd()
+    os.chdir(os.path.split(__file__)[0])
+    try:
+        main(setup().parse_args())
+    except Exception:
+        import traceback
+
+        traceback.print_exc()
+    os.chdir(old_cwd)
