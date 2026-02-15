@@ -1,7 +1,7 @@
 import argparse
 import json
 from shutil import copy, rmtree
-from typing import Dict, List, TypedDict
+from typing import Dict, List
 import config as cfg
 import pyuepak as pk
 from pathlib import Path
@@ -13,7 +13,7 @@ def log_entry_exit(func):
     def wrapper(*args, **kwargs):
         print(f"Entering: {func.__name__}")
         result = func(*args, **kwargs)
-        print(f"Exiting: {func.__name__}")
+        print(f"Exiting : {func.__name__}")
         return result
 
     return wrapper
@@ -36,9 +36,11 @@ def extract_package(
         file.write(locres_file)
 
 
+@log_entry_exit
 def get_game_version(pak: pk.PakFile, args: argparse.Namespace) -> str:
 
     if args.dont_add_version:
+        print("Version disabled by --dont_add_version")
         return ""
     data = pak.read_file(cfg.DEFAULT_GAME_PATH)
     data = data.decode().split("\r\n")
@@ -56,6 +58,7 @@ def extract_data(args: argparse.Namespace) -> str:
     return pak
 
 
+@log_entry_exit
 def disassemble_locres(args: argparse.Namespace):
     command = [
         args.UE4localizationsTool_path,
@@ -95,6 +98,7 @@ def alter_locres(args: argparse.Namespace):
         file.writelines(to_save)
 
 
+@log_entry_exit
 def assemble_locres(args: argparse.Namespace) -> None:
     command = [
         args.UE4localizationsTool_path,
@@ -226,4 +230,12 @@ def setup() -> argparse.ArgumentParser:
 
 
 if __name__ == "__main__":
-    main(setup().parse_args())
+    old_cwd = os.getcwd()
+    os.chdir(os.path.split(__file__)[0])
+    try:
+        main(setup().parse_args())
+    except Exception:
+        import traceback
+
+        traceback.print_exc()
+    os.chdir(old_cwd)
