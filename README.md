@@ -14,6 +14,7 @@ If value of keys won't have `\n` at the end, the script will add it. It's like t
 ## For Foxhole
 In order for the script to work properly, change these values in `config.py`
 - `pak_path` - points to the location of `War-WindowsNoEditor.pak` - main .pak file of the game
+
 Optionally you can change these:
 - `output_mod_name` - what the output name of the file should be.
 - `locres_path` - if you want to edit other localization file, or for other language. It's a path to the .locres file within game's .pak file
